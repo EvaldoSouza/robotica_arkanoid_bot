@@ -1,43 +1,48 @@
 function mask = extract_white_ball(img)
     % EXTRACT_WHITE_BALL Isolates a small white circular object from an image.
-    % Input: 'img' - An RGB or grayscale image.
-    % Output: 'mask' - A uint8 image of the same size (black background, white ball).
+    % Example: mask = extract_white_ball(imread('frame.jpg'));
 
-    % 2. Convert to grayscale if the input is an RGB image
+    gray_img = ensure_grayscale(img);
+    bw = segment_bright_pixels(gray_img, 0.8);
+    [labeled_matrix, num_objects] = bwlabel(bw);
+    
+    mask = filter_objects_by_geometry(labeled_matrix, num_objects, size(gray_img));
+end
+
+function gray_img = ensure_grayscale(img)
+    % Converts input to grayscale if RGB.
     if (size(img, 3) == 3)
         gray_img = rgb2gray(img);
-    else
-        gray_img = img;
-    endif
+        return;
+    end
+    gray_img = img;
+end
 
-    % 3. Threshold the image to isolate bright objects (adjust 0.8 if needed)
-    bw = im2bw(gray_img, 0.8);
+function bw = segment_bright_pixels(gray_img, threshold)
+    % Thresholds image to isolate high-intensity pixels.
+    % Using imbinarize as im2bw is deprecated in newer versions.
+    bw = imbinarize(gray_img, threshold);
+end
 
-    % 4. Label distinct connected components
-    [L, num] = bwlabel(bw);
+function mask = filter_objects_by_geometry(labeled_matrix, num_objects, img_size)
+    % Filters components based on size and circularity.
+    binary_mask = false(img_size);
+    stats = regionprops(labeled_matrix, 'Area', 'Eccentricity');
 
-    % 5. Extract geometric properties of each object
-    stats = regionprops(L, 'Area', 'Eccentricity');
-
-    % 6. Initialize an empty binary mask (all black)
-    binary_mask = false(size(gray_img));
-
-    % 7. Loop through objects and filter for the small round ball
-    for i = 1:num
-        % --- TWEAK THESE PARAMETERS IF NEEDED ---
-        % Area: Approximate number of pixels the ball occupies
-        is_right_size = (stats(i).Area >= 5 && stats(i).Area <= 15); 
-        
-        % Eccentricity: 0 is a perfect circle, 1 is a line. 
-        is_circular = (stats(i).Eccentricity < 0.55); 
-        % ----------------------------------------
-
-        % If the object matches both criteria, keep it
-        if is_right_size && is_circular
-            binary_mask = binary_mask | (L == i);
+    for i = 1:num_objects
+        if is_target_object(stats(i))
+            binary_mask = binary_mask | (labeled_matrix == i);
         end
-    endfor
-
-    % 8. Convert the logical mask (0 or 1) to a standard uint8 image (0 or 255)
+    end
+    
     mask = uint8(binary_mask) * 255;
-endfunction
+end
+
+function is_target = is_target_object(stats)
+    % Defines target geometry. 
+    % Area (5-15 pixels) and Eccentricity (< 0.55) for circularity.
+    is_right_size = (stats.Area >= 5 && stats.Area <= 15);
+    is_circular = (stats.Eccentricity < 0.55);
+    
+    is_target = is_right_size && is_circular;
+end
