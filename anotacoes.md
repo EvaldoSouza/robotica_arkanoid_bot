@@ -16,3 +16,9 @@ Passos para isso:
 - Calcular a tragetória da bolinha
 - Fazer o robo movimentar a plataforma para interceptar a bolinha
 - Fazer o robo mirar nos blocos restantes
+
+Detalhes: A plataforma muda de cor e forma dependendo do power up.
+Pode ser interessante criar uma heuristica para os power ups, mas é coisa pro final, apenas mantenha em mente
+
+A porra do octave fica crashando com segfault. Provavelmente é um bug no meu código, mas não consegui achar ainda. Ou pode ser a estrutura de arquivos, que tá muito grande, desgraça
+é muito sistemática, não sei se aguenta um projeto grande.
