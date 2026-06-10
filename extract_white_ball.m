@@ -1,48 +1,46 @@
-function mask = extract_white_ball(img)
-    % EXTRACT_WHITE_BALL Isolates a small white circular object from an image.
-    % Example: mask = extract_white_ball(imread('frame.jpg'));
+function ball_mask = extract_white_ball(labeled_matrix)
+    % Ball identification is based on geometry rather than brightness.
+    % The segmentation stage is performed elsewhere so that other
+    % detectors can reuse the same connected components.
 
-    gray_img = ensure_grayscale(img);
-    bw = segment_bright_pixels(gray_img, 0.8);
-    [labeled_matrix, num_objects] = bwlabel(bw);
-    
-    mask = filter_objects_by_geometry(labeled_matrix, num_objects, size(gray_img));
+    ball_mask = filter_ball_geometry(
+        labeled_matrix
+    );
 end
 
-function gray_img = ensure_grayscale(img)
-    % Converts input to grayscale if RGB.
-    if (size(img, 3) == 3)
-        gray_img = rgb2gray(img);
-        return;
-    end
-    gray_img = img;
-end
+function ball_mask = filter_ball_geometry( ...
+    labeled_matrix
+    )
 
-function bw = segment_bright_pixels(gray_img, threshold)
-    % Thresholds image to isolate high-intensity pixels.
-    % Using imbinarize as im2bw is deprecated in newer versions.
-    bw = imbinarize(gray_img, threshold);
-end
+    binary_mask = false(size(labeled_matrix));
 
-function mask = filter_objects_by_geometry(labeled_matrix, num_objects, img_size)
-    % Filters components based on size and circularity.
-    binary_mask = false(img_size);
-    stats = regionprops(labeled_matrix, 'Area', 'Eccentricity');
+    stats = regionprops(
+        labeled_matrix,
+        "Area",
+        "Eccentricity"
+    );
 
-    for i = 1:num_objects
-        if is_target_object(stats(i))
-            binary_mask = binary_mask | (labeled_matrix == i);
+    for region_idx = 1:numel(stats)
+        if is_ball_candidate(stats(region_idx))
+            binary_mask |= (labeled_matrix == region_idx);
         end
     end
-    
-    mask = uint8(binary_mask) * 255;
+
+    ball_mask = uint8(binary_mask) * 255;
 end
 
-function is_target = is_target_object(stats)
-    % Defines target geometry. 
-    % Area (5-15 pixels) and Eccentricity (< 0.55) for circularity.
-    is_right_size = (stats.Area >= 5 && stats.Area <= 15);
-    is_circular = (stats.Eccentricity < 0.55);
-    
-    is_target = is_right_size && is_circular;
+function is_candidate = is_ball_candidate(region_stats)
+    % The ball is one of the smallest connected components and
+    % remains approximately circular throughout the game.
+
+    is_right_size = ...
+        region_stats.Area >= 5 && ...
+        region_stats.Area <= 15;
+
+    is_circular = ...
+        region_stats.Eccentricity < 0.55;
+
+    is_candidate = ...
+        is_right_size && ...
+        is_circular;
 end
