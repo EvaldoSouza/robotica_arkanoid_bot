@@ -1,4 +1,4 @@
-function input = buttom(varargin)
+function input = button(varargin)
     % Maps string inputs to the NES controller array:
     % [start, select, up, down, left, right, a, b]
     input = zeros(1, 8);
