@@ -22,3 +22,11 @@ Pode ser interessante criar uma heuristica para os power ups, mas é coisa pro f
 
 A porra do octave fica crashando com segfault. Provavelmente é um bug no meu código, mas não consegui achar ainda. Ou pode ser a estrutura de arquivos, que tá muito grande, desgraça
 é muito sistemática, não sei se aguenta um projeto grande.
+
+A area do paddle, com um brightness de 0.8:
+
+Component 38:
+  Area:         28
+  BoundingBox:  [X: 95.5, Y: 210.5, W: 18.0, H: 6.0]
+  Aspect Ratio: 3.00 (W/H)
+  Centroid:     [X: 104.5, Y: 212.1]

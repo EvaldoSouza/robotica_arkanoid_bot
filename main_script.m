@@ -2,7 +2,7 @@ addpath("vision");
 addpath("emulator");
 addpath("debug");
 
-warning off;
+%warning off;
 pkg load retro_games;
 pkg load image;
 

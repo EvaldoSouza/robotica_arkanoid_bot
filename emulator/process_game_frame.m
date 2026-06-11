@@ -2,7 +2,6 @@ function process_game_frame( ...
     arkanoid_rom, ...
     frame_counter)
 
-    addpath("vision");
     advance_emulator(
         arkanoid_rom,
         frame_counter
@@ -15,10 +14,15 @@ function process_game_frame( ...
         0.8
     );
 
+    %inspect_components(frame_img, labeled_matrix); %chamando função de debug para ver o formato do paddle
+
     ball_mask = extract_white_ball(
         labeled_matrix
     );
 
-    render_debug_frame(ball_mask);
+    paddle_mask = extract_paddle(labeled_matrix);
 
+    combined_masks = max(ball_mask, paddle_mask);
+
+    render_debug_frame(combined_masks);
 end
