@@ -1,19 +1,6 @@
-function advance_emulator( ...
-    arkanoid_rom, ...
-    frame_counter)
-
+function advance_emulator(arkanoid_rom, active_input)
+    % Keep the original stepping rhythm
     arkanoid_rom.step(5);
-
-    if frame_counter == 5
-        arkanoid_rom.set_input(
-            botao("START")
-        );
-    else
-        arkanoid_rom.set_input(
-            botao()
-        );
-    endif
-
+    arkanoid_rom.set_input(active_input);
     arkanoid_rom.step(5);
-
 end
