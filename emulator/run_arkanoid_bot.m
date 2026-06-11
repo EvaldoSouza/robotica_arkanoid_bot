@@ -1,16 +1,17 @@
 function run_arkanoid_bot(arkanoid_rom)
-
     frame_counter = 0;
+    prev_ball_pos = []; % Initialize state
 
-    while frame_counter < 18234500
-
+    % Use a dynamic break instead of a magic number
+    while true 
         frame_counter = frame_counter + 1;
 
-        process_game_frame(
-            arkanoid_rom,
-            frame_counter
+        % Capture the returned state to use in the next loop iteration
+        prev_ball_pos = process_game_frame( ...
+            arkanoid_rom, ...
+            frame_counter, ...
+            prev_ball_pos ...
         );
 
-    endwhile
-
+    end
 end
