@@ -1,3 +1,6 @@
+clear all;
+close all;
+
 addpath("vision");
 addpath("emulator");
 addpath("debug");
