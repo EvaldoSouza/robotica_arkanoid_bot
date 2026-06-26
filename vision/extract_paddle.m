@@ -3,21 +3,39 @@ function paddle_mask = extract_paddle(labeled_matrix)
     % Relies on the same connected components used by the ball detector.
 
     stats = regionprops(labeled_matrix, "Area", "BoundingBox", "Centroid"); %não precisa de centroid, ou melhor, está errado, mas vamos testar primeiro
-    
-    % Collect indices of all regions that pass the paddle test
-    valid_indices = [];
+
+    persistent prev_centroid;
+
+    if isempty(prev_centroid)
+        prev_centroid = [];
+    end
+
+    best_idx = -1;
+    best_dist = Inf;
 
     for i = 1:numel(stats)
         if is_paddle_candidate(stats(i))
-            % Octave handles dynamic array growth reasonably well here
-            % since there are very few connected components per frame
-            valid_indices(end + 1) = i; 
+
+            if isempty(prev_centroid)
+                dist = 0;
+            else
+                dist = norm(stats(i).Centroid - prev_centroid);
+            end
+
+            if dist < best_dist
+                best_dist = dist;
+                best_idx = i;
+            end
+
         end
     end
 
-    % Vectorized mask generation: instantly creates a binary mask 
-    % matching any pixel that belongs to a valid region index.
-    paddle_mask = uint8(ismember(labeled_matrix, valid_indices)) * 255;
+    if best_idx ~= -1
+        paddle_mask = uint8(ismember(labeled_matrix, best_idx)) * 255;
+        prev_centroid = stats(best_idx).Centroid;
+    else
+        paddle_mask = uint8(zeros(size(labeled_matrix)));
+    end
 end
 
 function is_candidate = is_paddle_candidate(region_stats)
@@ -49,3 +67,8 @@ function is_candidate = is_paddle_candidate(region_stats)
 
     is_candidate = is_at_bottom && is_right_size && is_horizontal;
 end
+
+%vec norm pra verificar o centro em relação a posição anterior para evitar perder o paddle ou pegar o cinza do paddle ao invés do branco
+%identificar os oponentes 
+%q learning é pra aprender a jogar como pro
+%pontuar por acertar as bolinhas,  

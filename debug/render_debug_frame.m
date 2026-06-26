@@ -58,6 +58,14 @@ function render_debug_frame(frame_img, ball_mask, paddle_mask, ball_pos, velocit
         set(h_img, 'CData', debug_img);
     end
 
+    %figure(2);
+    %imshow(ball_mask);
+    %title("Ball Vision");
+
+    %figure(3);
+    %imshow(paddle_mask);
+    %title("Paddle Vision");
+
     % Force Octave to flush the graphics pipeline
     drawnow;
 end
