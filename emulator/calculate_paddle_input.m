@@ -9,7 +9,7 @@ function input_buttons = calculate_paddle_input(paddle_pos, intercept_x, frame_c
     end
 
     if intercept_x == -1
-        return; 
+        intercept_x = 105;
     end
 
     paddle_x = paddle_pos(1);
@@ -18,8 +18,8 @@ function input_buttons = calculate_paddle_input(paddle_pos, intercept_x, frame_c
     deadzone = config.motor.deadzone; 
 
     if paddle_x < (intercept_x - deadzone)
-        input_buttons = button("RIGHT");
+        input_buttons = button("RIGHT", "A");
     elseif paddle_x > (intercept_x + deadzone)
-        input_buttons = button("LEFT");
+        input_buttons = button("LEFT", "A");
     end
 end

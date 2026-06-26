@@ -15,12 +15,12 @@ arkanoid_rom = load_rom("roms/arkanoid.nes");
 % --- Centralized Configuration ---
 config = struct();
 config.vision.ball_threshold = 0.8;
-config.vision.paddle_threshold = 0.6;
+config.vision.paddle_threshold = 0.5;
 config.motor.deadzone = 4.0;
 config.physics.left_wall = 16;
 config.physics.right_wall = 240;
 config.physics.paddle_y = 212;
-config.game.frame_skip = 10;
+config.game.frame_skip = 2;
 % --------------------------------------
 
 frame_counter = 0;
