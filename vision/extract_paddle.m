@@ -55,7 +55,7 @@ function is_candidate = is_paddle_candidate(region_stats)
     % --- The Geometric Heuristics ---
     
     % 1. Location constraint: The paddle is strictly at the bottom.
-    is_at_bottom = centroid_y > 190 && centroid_y < 235; 
+    is_at_bottom = centroid_y > 205 && centroid_y < 218; 
     
     % 2. Size constraint: Based on Area 28, with a wide buffer to 
     % accommodate the "Expand" (Enlarge) power-up later.
