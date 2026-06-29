@@ -1,6 +1,10 @@
 function [next_input, next_ball_pos, next_velocity, current_state, action_idx, config] = run_arkanoid_bot( ...
     frame_img, frame_counter, prev_ball_pos, prev_velocity, prev_state, prev_action_idx, config)
 
+    persistent prev_block_count;
+    if isempty(prev_block_count)
+        prev_block_count = 0;
+    end
     % 1. Vision Processing
     [ball_mask, paddle_mask, block_count, block_mask] = process_game_frame(frame_img, config);
     
@@ -12,7 +16,7 @@ function [next_input, next_ball_pos, next_velocity, current_state, action_idx, c
     
     % 3. RL State & Reward
     current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity);
-    reward = calculate_visual_reward(current_ball_pos, velocity, prev_velocity, config);
+    reward = calculate_visual_reward(current_ball_pos, velocity, prev_velocity, block_count, prev_block_count, config);
 
     % 4. Q-Learning Agent (The new Brain)
     [action_idx, updated_q_table] = q_learning_agent(current_state, reward, prev_state, prev_action_idx, config);
@@ -59,6 +63,7 @@ function [next_input, next_ball_pos, next_velocity, current_state, action_idx, c
     % Pass everything forward for the next frame
     next_ball_pos = current_ball_pos; 
     next_velocity = velocity;
+    prev_block_count = block_count;
 end
 
 function [ball_mask, paddle_mask, block_count, block_mask] = process_game_frame(frame_img, config)
