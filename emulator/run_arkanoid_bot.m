@@ -2,7 +2,7 @@ function [next_input, next_ball_pos, next_velocity, current_state, action_idx, c
     frame_img, frame_counter, prev_ball_pos, prev_velocity, prev_state, prev_action_idx, config)
 
     % 1. Vision Processing
-    [ball_mask, paddle_mask] = process_game_frame(frame_img, config);
+    [ball_mask, paddle_mask, block_count, block_mask] = process_game_frame(frame_img, config);
     
     current_ball_pos = extract_centroid(ball_mask);
     current_paddle_pos = extract_centroid(paddle_mask);
@@ -52,7 +52,8 @@ function [next_input, next_ball_pos, next_velocity, current_state, action_idx, c
             reward, ...
             config.rl.epsilon, ...
             frame_counter, ...
-            action_idx ...
+            action_idx,
+            block_mask...
         );
     end
     % Pass everything forward for the next frame
@@ -60,10 +61,11 @@ function [next_input, next_ball_pos, next_velocity, current_state, action_idx, c
     next_velocity = velocity;
 end
 
-function [ball_mask, paddle_mask] = process_game_frame(frame_img, config)
+function [ball_mask, paddle_mask, block_count, block_mask] = process_game_frame(frame_img, config)
     % Ball: Uses strict threshold from config
     ball_labeled = build_bright_component_map(frame_img, config.vision.ball_threshold);
     ball_mask = extract_white_ball(ball_labeled);
+    [block_count, block_mask] = detect_blocks(frame_img);
     
     % Paddle: Uses relaxed threshold from config
     paddle_labeled = build_bright_component_map(frame_img, config.vision.paddle_threshold, true);

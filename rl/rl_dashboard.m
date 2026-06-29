@@ -1,4 +1,4 @@
-function rl_dashboard(frame_img, ball_mask, paddle_mask, ball_pos, intercept_x, q_table, current_state, reward, epsilon, frame_counter, action_idx)
+function rl_dashboard(frame_img, ball_mask, paddle_mask, ball_pos, intercept_x, q_table, current_state, reward, epsilon, frame_counter, action_idx, block_mask)
     % A high-performance, Data-Mutation dashboard for Reinforcement Learning.
     % Uses persistent handles to update graphics without re-drawing the UI.
     persistent handles;
@@ -20,7 +20,8 @@ function rl_dashboard(frame_img, ball_mask, paddle_mask, ball_pos, intercept_x, 
     vision_rgb = zeros(size(game_rgb), 'uint8');
     vision_rgb(:,:,1) = ball_mask;   % Red Ball
     vision_rgb(:,:,2) = paddle_mask; % Cyan Paddle
-    vision_rgb(:,:,3) = paddle_mask; 
+    vision_rgb(:,:,3) = paddle_mask;
+    vision_rgb(:,:,2) = max(vision_rgb(:,:,2), block_mask);
     set(handles.img_vision, 'CData', vision_rgb);
 
     % Update Trajectory Line

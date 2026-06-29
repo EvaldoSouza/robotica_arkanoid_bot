@@ -42,7 +42,7 @@ function bright_mask = segment_bright_pixels(gray_img, threshold)
     % from drifting apart over time.
 
     bright_mask = imbinarize(gray_img, threshold);
-     % The NES Arkanoid left and right walls are ~16 pixels wide.
+    % The NES Arkanoid left and right walls are ~16 pixels wide.
     % Because they are grey, they can survive the paddle's 0.5 threshold.
     % By forcing the literal edges of the screen to black, we prevent the 
     % paddle from merging with the walls when it moves to the extremes.
