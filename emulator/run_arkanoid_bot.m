@@ -1,23 +1,44 @@
-function [next_input, next_ball_pos] = run_arkanoid_bot(frame_img, frame_counter, prev_ball_pos, config)
-    
+function [next_input, next_ball_pos, next_velocity, current_state, action_idx, config] = run_arkanoid_bot( ...
+    frame_img, frame_counter, prev_ball_pos, prev_velocity, prev_state, prev_action_idx, config)
+
     % 1. Vision Processing
     [ball_mask, paddle_mask] = process_game_frame(frame_img, config);
     
     current_ball_pos = extract_centroid(ball_mask);
     current_paddle_pos = extract_centroid(paddle_mask);
 
-    % 2. State & Trajectory Prediction
+    % 2. State & Trajectory Prediction (Still useful for getting the exact velocity!)
     [velocity, intercept_x] = predict_trajectory(current_ball_pos, prev_ball_pos, config);
     
-    % 3. Motor Control (Using your preferred 3 arguments + config)
-    next_input = calculate_paddle_input( ...
-        current_paddle_pos, ...
-        intercept_x, ...
-        frame_counter, ...
-        config ...
-    );
+    % 3. RL State & Reward
+    current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity);
+    reward = calculate_visual_reward(current_ball_pos, velocity, prev_velocity, config);
 
-    % 4. Telemetry
+    % 4. Q-Learning Agent (The new Brain)
+    [action_idx, updated_q_table] = q_learning_agent(current_state, reward, prev_state, prev_action_idx, config);
+    config.rl.q_table = updated_q_table;
+    
+    % 5. Motor Control (Translate agent action to buttons)
+    if isempty(current_paddle_pos)
+        % Ensure we can still get out of the menu sequence!
+        if mod(frame_counter, 60) < 5
+            next_input = button("START");
+        else
+            next_input = button();
+        end
+        action_idx = 0; % Prevent the bot from learning noise during the menu
+    else
+        % Map the Q-learning choice to actual emulator inputs
+        if action_idx == 1
+            next_input = button("LEFT", "A");
+        elseif action_idx == 2
+            next_input = button("RIGHT", "A");
+        else
+            next_input = button("A"); % IDLE
+        end
+    end
+
+    % 6. Telemetry
     render_debug_frame( ...
         frame_img, ...
         ball_mask, ...
@@ -27,7 +48,9 @@ function [next_input, next_ball_pos] = run_arkanoid_bot(frame_img, frame_counter
         intercept_x ...
     );
 
+    % Pass everything forward for the next frame
     next_ball_pos = current_ball_pos; 
+    next_velocity = velocity;
 end
 
 function [ball_mask, paddle_mask] = process_game_frame(frame_img, config)

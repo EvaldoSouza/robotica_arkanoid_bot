@@ -2,7 +2,7 @@ function paddle_mask = extract_paddle(labeled_matrix)
     % Extracts the Arkanoid paddle based on geometric constraints.
     % Relies on the same connected components used by the ball detector.
 
-    stats = regionprops(labeled_matrix, "Area", "BoundingBox", "Centroid"); %não precisa de centroid, ou melhor, está errado, mas vamos testar primeiro
+    stats = regionprops(labeled_matrix, "Area", "BoundingBox", "Centroid");
 
     persistent prev_centroid;
 
