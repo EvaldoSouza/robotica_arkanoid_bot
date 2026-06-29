@@ -1,16 +1,29 @@
-function state_indices = discretize_state(paddle_pos, ball_pos, velocity)
+function state_indices = discretize_state(paddle_pos, ball_pos, velocity, intercept_x)
     % Converts continuous vision coordinates into a discrete 4D state vector
     % [relative_x, ball_y, dir_x, dir_y]
     
     % Default state if objects are missing (e.g., loading screen)
+    if nargin < 4
+        intercept_x = -1;
+    end
+    
     if isempty(paddle_pos) || isempty(ball_pos) || isempty(velocity)
         state_indices = [3, 1, 1, 1]; % Assume center, high, moving up-left
         return;
     end
 
-    % 1. Relative X (Where is the ball compared to the paddle?)
+    % --- 1. Predictive Relative X ---
+    % If we have a valid intercept prediction, use it! 
+    % Otherwise, fallback to the ball's current X position.
+    if intercept_x ~= -1
+        target_x = intercept_x;
+    else
+        target_x = ball_pos(1);
+    end
+    
+    diff_x = target_x - paddle_pos(1);
+    
     % 5 Bins: Far Left (1), Left (2), Center (3), Right (4), Far Right (5)
-    diff_x = ball_pos(1) - paddle_pos(1);
     if diff_x < -20
         rel_x = 1;
     elseif diff_x < -5

@@ -15,7 +15,7 @@ function [next_input, next_ball_pos, next_velocity, current_state, action_idx, c
     [velocity, intercept_x] = predict_trajectory(current_ball_pos, prev_ball_pos, config);
     
     % 3. RL State & Reward
-    current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity);
+    current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity, intercept_x);
     reward = calculate_visual_reward(current_ball_pos, velocity, prev_velocity, block_count, prev_block_count, config);
 
     % 4. Q-Learning Agent (The new Brain)
