@@ -66,7 +66,7 @@ function [ball_mask, paddle_mask] = process_game_frame(frame_img, config)
     ball_mask = extract_white_ball(ball_labeled);
     
     % Paddle: Uses relaxed threshold from config
-    paddle_labeled = build_bright_component_map(frame_img, config.vision.paddle_threshold);
+    paddle_labeled = build_bright_component_map(frame_img, config.vision.paddle_threshold, true);
     paddle_mask = extract_paddle(paddle_labeled);
 end
 
