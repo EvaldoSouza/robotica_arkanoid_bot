@@ -25,7 +25,7 @@ function update_dashboard(handles, frame_img, q_values, state_indices, action, r
     update_q_telemetry(handles.q_bars, q_values);
     
     % Optional: print telemetry to console (can be commented out for speed)
-    % print_state_telemetry(state_indices, action, reward);
+    print_state_telemetry(state_indices, action, reward);
 end
 
 function update_vision_view(img_handle, line_handle, pt_handle, ball_mask, paddle_mask, block_mask, ball_pos, intercept_x)
