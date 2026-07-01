@@ -14,22 +14,29 @@ function [velocity, intercept_x] = predict_trajectory(current_pos, prev_pos, con
         return;
     end
 
-    % --- NEW: Extracting physics boundaries from config ---
+    % --- Extracting physics boundaries from config ---
     left_wall = config.physics.left_wall;
     right_wall = config.physics.right_wall;
     paddle_y = config.physics.paddle_y;
 
     frames_to_impact = (paddle_y - current_pos(2)) / vy;
     raw_x = current_pos(1) + (vx * frames_to_impact);
-    intercept_x = raw_x;
     
-    while intercept_x < left_wall || intercept_x > right_wall
-        if intercept_x < left_wall
-            overshoot = left_wall - intercept_x;
-            intercept_x = left_wall + overshoot;
-        elseif intercept_x > right_wall
-            overshoot = intercept_x - right_wall;
-            intercept_x = right_wall - overshoot;
-        end
+    % --- NEW: O(1) Bouncing Math ---
+    % Replaces the slow While Loop with instantaneous Modulo math.
+    % Completely prevents freezes when switching between multiple balls.
+    
+    play_width = right_wall - left_wall;
+    x_shifted = raw_x - left_wall;
+    
+    crossings = floor(x_shifted / play_width);
+    rem_x = mod(x_shifted, play_width);
+    
+    if mod(crossings, 2) == 0
+        % Even crossings: Moving Left -> Right
+        intercept_x = left_wall + rem_x;
+    else
+        % Odd crossings: Bouncing Right -> Left
+        intercept_x = right_wall - rem_x;
     end
 end

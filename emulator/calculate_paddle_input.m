@@ -1,5 +1,5 @@
 function input_buttons = calculate_paddle_input(paddle_pos, intercept_x, frame_counter, config)
-    input_buttons = button(); % Using renamed function
+    input_buttons = button();
 
     if isempty(paddle_pos)
         if mod(frame_counter, 60) < 5

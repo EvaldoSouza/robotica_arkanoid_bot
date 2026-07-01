@@ -121,7 +121,8 @@ while true
         config.rl.q_table = config.rl.q_table + (config.rl.alpha * reward * config.rl.e_table);
         
         % --- FINALIZE EPISODE TELEMETRY ---
-        [telemetry, episode_stats] = record_episode_telemetry(telemetry, episode_stats, config.rl.epsilon);
+        % Cleanly delegate all array appends, saving, and variable resets
+        [telemetry, episode_stats] = record_episode_telemetry(telemetry, episode_stats, config);
 
         % Teleport back to the exact frame the level started
         if level_saved && ~isempty(level_mem)

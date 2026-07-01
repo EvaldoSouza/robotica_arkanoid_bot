@@ -14,7 +14,18 @@ function centroid = extract_centroid(binary_mask)
     stats = regionprops(logical_mask, "Centroid");
 
     if ~isempty(stats)
+        % Default to the first detected object
         centroid = stats(1).Centroid;
+        
+        % --- NEW: Multi-Ball Targeting ---
+        % If there are multiple objects (e.g., 3 balls), always lock 
+        % onto the "most dangerous" one (lowest on the screen/Max Y).
+        max_y = centroid(2);
+        for i = 2:numel(stats)
+            if stats(i).Centroid(2) > max_y
+                max_y = stats(i).Centroid(2);
+                centroid = stats(i).Centroid;
+            end
+        end
     end
-
 end
