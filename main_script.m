@@ -20,6 +20,18 @@ prev_prev_action_idx = 0;
 prev_ball_pos = []; prev_velocity = []; prev_state = [];
 current_input = button();
 
+% NEW: Telemetry Initialization
+telemetry = struct('episode', [], 'total_reward', [], 'blocks_broken', [], 'avg_q_value', [], 'jitter_freq', [], 'epsilon', []);
+if exist("training_metrics.mat", "file")
+    data = load("training_metrics.mat");
+    telemetry = data.telemetry;
+    fprintf('Resuming telemetry from episode %d...\n', length(telemetry.episode));
+end
+
+% Grouping all loose trackers into a single explicit struct
+episode_stats = struct('reward', 0, 'q_sum', 0, 'steps', 0, 'jitters', 0, 'blocks', 0);
+prev_block_count = 0;
+
 % Flags and variables for in-memory save states
 level_saved = false; 
 level_mem = []; 
@@ -54,9 +66,24 @@ while true
     end
 
     % 3. Discretize State & Compute Reward
-    % NEW: Now passing config to discretize_state so it knows where the walls are.
     current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity, intercept_x, config);
     reward = calculate_visual_reward(current_ball_pos, velocity, prev_velocity, prev_action_idx, prev_prev_action_idx, config);
+
+    % --- METRICS UPDATE ---
+    episode_stats.reward = episode_stats.reward + reward;
+    episode_stats.steps = episode_stats.steps + 1;
+    
+    if block_count < prev_block_count && prev_block_count > 0
+        episode_stats.blocks = episode_stats.blocks + (prev_block_count - block_count);
+    end
+    prev_block_count = block_count;
+
+    c_idx = num2cell(current_state);
+    episode_stats.q_sum = episode_stats.q_sum + max(config.rl.q_table(c_idx{:}, :));
+    
+    if (prev_action_idx == 1 && prev_prev_action_idx == 2) || (prev_action_idx == 2 && prev_prev_action_idx == 1)
+        episode_stats.jitters = episode_stats.jitters + 1;
+    end
 
     % 4. Action Selection & Policy Update
     if isempty(current_paddle_pos)
@@ -73,6 +100,10 @@ while true
     if reward == -100
         fprintf('Agent died at frame %d. Restoring from memory...\n', frame_counter);
         
+        % --- FINALIZE EPISODE TELEMETRY ---
+        % Cleanly delegate all array appends, saving, and variable resets
+        [telemetry, episode_stats] = record_episode_telemetry(telemetry, episode_stats, config.rl.epsilon);
+
         % Teleport back to the exact frame the level started
         if level_saved && ~isempty(level_mem)
             % Explicitly cast back to uint8 to satisfy the C++ backend
@@ -84,6 +115,7 @@ while true
         % CRITICAL: Wipe short-term memory to avoid corrupting the Q-Table
         prev_ball_pos = []; prev_velocity = []; prev_state = [];
         prev_action_idx = 0; prev_prev_action_idx = 0;
+        prev_block_count = 0; % Reset block tracker for new life
         config.rl.e_table = zeros(size(config.rl.q_table)); % Wipe Eligibility Trace
         
         continue; % Skip the rest of this loop and pull a fresh frame
