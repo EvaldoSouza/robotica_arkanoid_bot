@@ -20,9 +20,9 @@ prev_prev_action_idx = 0;
 prev_ball_pos = []; prev_velocity = []; prev_state = [];
 current_input = button();
 
-% Flag to track if we have successfully saved the level's starting state
-level_saved = false;
-level_mem = []
+% Flags and variables for in-memory save states
+level_saved = false; 
+level_mem = []; 
 
 fprintf("Starting Arkanoid Main Loop...\n");
 
@@ -41,23 +41,28 @@ while true
     current_paddle_pos = extract_centroid(paddle_mask);
     [velocity, intercept_x] = predict_trajectory(current_ball_pos, prev_ball_pos, config);
 
-    % --- AUTO-SAVE STATE LOGIC --- % This guarantees we are past the title and "Ready" screens.
+    % --- AUTO-SAVE STATE LOGIC ---
+    % Capture state when both paddle and ball are definitively on screen.
+    % This guarantees we are past the title and "Ready" screens.
     objects_present = ~isempty(current_paddle_pos) && ~isempty(current_ball_pos);
+    
     if ~level_saved && objects_present
-        fprintf('Grid fully loaded! Saving emulator state at frame %d...\n', frame_counter);
-        level_mem = arkanoid_rom.get_state;
+        fprintf('Game started! Capturing emulator memory state at frame %d...\n', frame_counter);
+        % Explicitly cast to uint8 to prevent Octave from coercing it to a char array
+        level_mem = uint8(arkanoid_rom.get_state);
         level_saved = true;
     end
 
     % 3. Discretize State & Compute Reward
-    current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity, intercept_x);
+    % NEW: Now passing config to discretize_state so it knows where the walls are.
+    current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity, intercept_x, config);
     reward = calculate_visual_reward(current_ball_pos, velocity, prev_velocity, prev_action_idx, prev_prev_action_idx, config);
 
     % 4. Action Selection & Policy Update
     if isempty(current_paddle_pos)
         action_idx = 0; % Force menu bypass mode if paddle is lost
     else
-        [action_idx, config.rl.q_table] = q_learning_agent(current_state, reward, prev_state, prev_action_idx, config);
+        [action_idx, config.rl.q_table, config.rl.e_table] = q_learning_agent(current_state, reward, prev_state, prev_action_idx, config);
         
         % --- DYNAMIC EPSILON: Decay exploration rate ---
         config.rl.epsilon = max(config.rl.epsilon_min, config.rl.epsilon * config.rl.epsilon_decay);
@@ -66,18 +71,20 @@ while true
     % --- FAST RESET & MENU BYPASS ---
     % Trap the death penalty before we execute the next action
     if reward == -100
-        fprintf('Agent died at frame %d. Reloading environment...\n', frame_counter);
+        fprintf('Agent died at frame %d. Restoring from memory...\n', frame_counter);
         
         % Teleport back to the exact frame the level started
-        if level_saved
-            arkanoid_rom.set_state(level_mem);
+        if level_saved && ~isempty(level_mem)
+            % Explicitly cast back to uint8 to satisfy the C++ backend
+            arkanoid_rom.set_state(uint8(level_mem));
         else
-            arkanoid_rom.reset(); % Fallback if it died before blocks appeared
+            arkanoid_rom.reset(); % Fallback if it died before memory was saved
         end
         
         % CRITICAL: Wipe short-term memory to avoid corrupting the Q-Table
         prev_ball_pos = []; prev_velocity = []; prev_state = [];
         prev_action_idx = 0; prev_prev_action_idx = 0;
+        config.rl.e_table = zeros(size(config.rl.q_table)); % Wipe Eligibility Trace
         
         continue; % Skip the rest of this loop and pull a fresh frame
     end
@@ -87,7 +94,9 @@ while true
 
     % 6. Telemetry & Display Update
     if mod(frame_counter, 5) == 0 || reward ~= 0
-        q_vals = squeeze(config.rl.q_table(current_state(1), current_state(2), current_state(3), current_state(4), :));
+        % NEW: Using num2cell so squeeze handles any number of state dimensions automatically
+        c_idx = num2cell(current_state);
+        q_vals = squeeze(config.rl.q_table(c_idx{:}, :));
         
         update_dashboard(ui_handles, frame_img, q_vals, current_state, current_input, reward, ...
                          ball_mask, paddle_mask, block_mask, current_ball_pos, intercept_x);
@@ -102,6 +111,6 @@ while true
 
     % 8. Persistence
     if mod(frame_counter, 1000) == 0
-        save_brain(config.rl.q_table, frame_counter);
+        save_brain(config.rl.q_table, config.rl.epsilon, frame_counter);
     end
 end

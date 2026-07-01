@@ -1,41 +1,47 @@
-function [action_idx, updated_q_table] = q_learning_agent(current_state, reward, prev_state, prev_action_idx, config)
-    % Q-Learning agent that updates the Q-table and selects the next action
-    % action_idx maps to: 1 = LEFT, 2 = RIGHT, 3 = IDLE
+function [action_idx, updated_q_table, updated_e_table] = q_learning_agent(current_state, reward, prev_state, prev_action_idx, config)
+    % Orchestrates the learning update and subsequent action selection using TD(Lambda).
     
-    updated_q_table = config.rl.q_table;
+    [updated_q_table, updated_e_table] = update_q_value_td_lambda(config.rl.q_table, config.rl.e_table, current_state, reward, prev_state, prev_action_idx, config.rl);
+    action_idx = select_epsilon_greedy_action(updated_q_table, current_state, config.rl);
+end
+
+function [q_table, e_table] = update_q_value_td_lambda(q_table, e_table, curr_state, reward, prev_state, prev_action, rl_cfg)
+    % Applies the TD(Lambda) Bellman equation. Uses cell arrays for dimension-agnostic indexing.
+    % Uses vectorized operations to apply rewards backwards in time.
     
-    % --- 1. UPDATE PHASE (Learning) ---
-    % We only learn if we actually made a move in a previous state
-    if ~isempty(prev_state) && prev_action_idx > 0
-        % Extract indices for readability
-        p_rx = prev_state(1); p_y = prev_state(2); p_dx = prev_state(3); p_dy = prev_state(4);
-        c_rx = current_state(1); c_y = current_state(2); c_dx = current_state(3); c_dy = current_state(4);
-        
-        % Current Q-value for the action we took
-        old_q = updated_q_table(p_rx, p_y, p_dx, p_dy, prev_action_idx);
-        
-        % Estimate of optimal future value
-        max_future_q = max(updated_q_table(c_rx, c_y, c_dx, c_dy, :));
-        
-        % The Bellman Equation
-        new_q = old_q + config.rl.alpha * (reward + config.rl.gamma * max_future_q - old_q);
-        
-        % Save the new knowledge
-        updated_q_table(p_rx, p_y, p_dx, p_dy, prev_action_idx) = new_q;
+    if isempty(prev_state) || prev_action <= 0
+        return;
     end
     
-    % --- 2. ACTION SELECTION PHASE (Epsilon-Greedy) ---
-    if rand() < config.rl.epsilon
-        % Exploration: Roll the dice, pick a random action (1, 2, or 3)
+    % num2cell allows us to unpack the state array as dynamic matrix coordinates
+    c_idx = num2cell(curr_state);
+    p_idx = num2cell(prev_state);
+    
+    old_q = q_table(p_idx{:}, prev_action);
+    max_future = max(q_table(c_idx{:}, :));
+    
+    % 1. Calculate Temporal Difference Error
+    delta = reward + rl_cfg.gamma * max_future - old_q;
+    
+    % 2. Update Eligibility Trace for the visited state (Replacing Trace)
+    e_table(p_idx{:}, prev_action) = 1;
+    
+    % 3. Apply credit backwards through time to all eligible states
+    % Because Q and E are identically sized matrices, this is a single vectorized op!
+    q_table = q_table + (rl_cfg.alpha * delta * e_table);
+    
+    % 4. Decay the eligibility trace for the next frame
+    e_table = e_table * (rl_cfg.gamma * rl_cfg.lambda);
+end
+
+function action_idx = select_epsilon_greedy_action(q_table, curr_state, rl_cfg)
+    % Balances exploration vs exploitation based on epsilon decay.
+    
+    if rand() < rl_cfg.epsilon
         action_idx = randi([1, 3]);
     else
-        % Exploitation: Trust the Q-table and pick the best action
-        c_rx = current_state(1); c_y = current_state(2); c_dx = current_state(3); c_dy = current_state(4);
-        
-        % Extract the 3 Q-values for the current state
-        state_actions = updated_q_table(c_rx, c_y, c_dx, c_dy, :);
-        
-        % Find the index of the highest Q-value
+        c_idx = num2cell(curr_state);
+        state_actions = q_table(c_idx{:}, :);
         [~, action_idx] = max(state_actions(:)); 
     end
 end

@@ -1,68 +1,58 @@
-function state_indices = discretize_state(paddle_pos, ball_pos, velocity, intercept_x)
-    % Converts continuous vision coordinates into a discrete 4D state vector
-    % [relative_x, ball_y, dir_x, dir_y]
+function state_indices = discretize_state(paddle_pos, ball_pos, velocity, intercept_x, config)
+    % Converts continuous vision coordinates into a discrete 5D state vector
+    % [abs_x, relative_x, ball_y, dir_x, dir_y]
     
-    % Default state if objects are missing (e.g., loading screen)
-    if nargin < 4
-        intercept_x = -1;
-    end
-    
-    if isempty(paddle_pos) || isempty(ball_pos) || isempty(velocity)
-        state_indices = [3, 1, 1, 1]; % Assume center, high, moving up-left
+    if nargin < 5 || isempty(paddle_pos) || isempty(ball_pos) || isempty(velocity)
+        state_indices = [2, 3, 1, 1, 1]; % Default fallback state
         return;
     end
 
-    % --- 1. Predictive Relative X ---
-    % If we have a valid intercept prediction, use it! 
-    % Otherwise, fallback to the ball's current X position.
+    abs_x = bin_absolute_x(paddle_pos(1), config);
+    rel_x = bin_relative_x(paddle_pos(1), ball_pos(1), intercept_x);
+    ball_y = bin_ball_y(ball_pos(2));
+    [dir_x, dir_y] = bin_velocity(velocity);
+
+    state_indices = [abs_x, rel_x, ball_y, dir_x, dir_y];
+end
+
+function ax = bin_absolute_x(paddle_x, config)
+    % 3 Bins: Left Wall (1), Middle (2), Right Wall (3)
+    if paddle_x < config.physics.left_wall + 15
+        ax = 1;
+    elseif paddle_x > config.physics.right_wall - 15
+        ax = 3;
+    else
+        ax = 2;
+    end
+end
+
+function rx = bin_relative_x(paddle_x, ball_x, intercept_x)
+    % 5 Bins: Far Left (1), Left (2), Center (3), Right (4), Far Right (5)
+    target_x = ball_x;
     if intercept_x ~= -1
         target_x = intercept_x;
-    else
-        target_x = ball_pos(1);
     end
     
-    diff_x = target_x - paddle_pos(1);
+    diff_x = target_x - paddle_x;
     
-    % 5 Bins: Far Left (1), Left (2), Center (3), Right (4), Far Right (5)
-    if diff_x < -20
-        rel_x = 1;
-    elseif diff_x < -5
-        rel_x = 2;
-    elseif diff_x <= 5
-        rel_x = 3;
-    elseif diff_x <= 20
-        rel_x = 4;
-    else
-        rel_x = 5;
+    if diff_x < -20;     rx = 1;
+    elseif diff_x < -5;  rx = 2;
+    elseif diff_x <= 5;  rx = 3;
+    elseif diff_x <= 20; rx = 4;
+    else;                rx = 5;
     end
+end
 
-    % 2. Ball Height (How imminent is the impact?)
+function by = bin_ball_y(y)
     % 3 Bins: High/Safe (1), Medium (2), Low/Imminent (3)
-    y = ball_pos(2);
-    if y < 100
-        ball_y = 1;
-    elseif y < 180
-        ball_y = 2;
-    else
-        ball_y = 3;
+    if y < 100;     by = 1;
+    elseif y < 180; by = 2;
+    else;           by = 3;
     end
+end
 
-    % 3. X Velocity Direction
-    % 2 Bins: Left (1), Right (2)
-    if velocity(1) < 0
-        dir_x = 1; 
-    else
-        dir_x = 2; 
-    end
-
-    % 4. Y Velocity Direction
-    % 2 Bins: Up (1), Down (2)
-    if velocity(2) < 0
-        dir_y = 1; 
-    else
-        dir_y = 2; 
-    end
-
-    % Return the discrete state array
-    state_indices = [rel_x, ball_y, dir_x, dir_y];
+function [dx, dy] = bin_velocity(vel)
+    % 2 Bins each: Left/Right (1/2), Up/Down (1/2)
+    dx = 2; if vel(1) < 0; dx = 1; end
+    dy = 2; if vel(2) < 0; dy = 1; end
 end

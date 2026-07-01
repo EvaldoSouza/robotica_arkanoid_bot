@@ -1,12 +1,12 @@
-function save_brain(q_table, frame_counter)
-% Persists the learned Q-Table policy to disk.
+function save_brain(q_table, epsilon, frame_counter)
+% Persists the learned Q-Table policy and exploration rate to disk.
 %
 % Usage:
-%   save_brain(config.rl.q_table, 1000);
+%   save_brain(config.rl.q_table, config.rl.epsilon, 1000);
     if ~isnumeric(q_table)
     error("TypeError: q_table must be a numeric multi-dimensional array.");
     end
 
-    save("arkanoid_brain.mat", "q_table");
-    fprintf("--- Brain Saved at Frame %d ---\n", frame_counter);
+    save("arkanoid_brain.mat", "q_table", "epsilon");
+    fprintf("--- Brain Saved at Frame %d (Epsilon: %.4f) ---\n", frame_counter, epsilon);
 end
