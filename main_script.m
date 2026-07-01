@@ -20,6 +20,10 @@ prev_prev_action_idx = 0;
 prev_ball_pos = []; prev_velocity = []; prev_state = [];
 current_input = button();
 
+% Flag to track if we have successfully saved the level's starting state
+level_saved = false;
+level_mem = []
+
 fprintf("Starting Arkanoid Main Loop...\n");
 
 % STREAMING_CHUNK: Running main agent loop...
@@ -37,6 +41,14 @@ while true
     current_paddle_pos = extract_centroid(paddle_mask);
     [velocity, intercept_x] = predict_trajectory(current_ball_pos, prev_ball_pos, config);
 
+    % --- AUTO-SAVE STATE LOGIC --- % This guarantees we are past the title and "Ready" screens.
+    objects_present = ~isempty(current_paddle_pos) && ~isempty(current_ball_pos);
+    if ~level_saved && objects_present
+        fprintf('Grid fully loaded! Saving emulator state at frame %d...\n', frame_counter);
+        level_mem = arkanoid_rom.get_state;
+        level_saved = true;
+    end
+
     % 3. Discretize State & Compute Reward
     current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity, intercept_x);
     reward = calculate_visual_reward(current_ball_pos, velocity, prev_velocity, prev_action_idx, prev_prev_action_idx, config);
@@ -49,6 +61,25 @@ while true
         
         % --- DYNAMIC EPSILON: Decay exploration rate ---
         config.rl.epsilon = max(config.rl.epsilon_min, config.rl.epsilon * config.rl.epsilon_decay);
+    end
+
+    % --- FAST RESET & MENU BYPASS ---
+    % Trap the death penalty before we execute the next action
+    if reward == -100
+        fprintf('Agent died at frame %d. Reloading environment...\n', frame_counter);
+        
+        % Teleport back to the exact frame the level started
+        if level_saved
+            arkanoid_rom.set_state(level_mem);
+        else
+            arkanoid_rom.reset(); % Fallback if it died before blocks appeared
+        end
+        
+        % CRITICAL: Wipe short-term memory to avoid corrupting the Q-Table
+        prev_ball_pos = []; prev_velocity = []; prev_state = [];
+        prev_action_idx = 0; prev_prev_action_idx = 0;
+        
+        continue; % Skip the rest of this loop and pull a fresh frame
     end
 
     % 5. Actuate Environment
