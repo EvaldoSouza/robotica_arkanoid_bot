@@ -8,10 +8,8 @@ function reward = calculate_visual_reward(ball_pos, current_velocity, prev_veloc
         return;
     end
     
-    if ball_pos(2) > (config.physics.paddle_y + 10)
-        reward = -100; % PUNISHMENT: Death
-        return;
-    end
+    % NOTE: The death penalty (-100) has been removed from here.
+    % It is now handled by the main orchestrator tracking global ball presence.
     
     reward = apply_hit_reward(reward, ball_pos, current_velocity, prev_velocity, config);
     reward = apply_jitter_penalty(reward, prev_action, prev_prev_action);

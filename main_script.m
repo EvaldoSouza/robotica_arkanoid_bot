@@ -31,6 +31,7 @@ end
 % Grouping all loose trackers into a single explicit struct
 episode_stats = struct('reward', 0, 'q_sum', 0, 'steps', 0, 'jitters', 0, 'blocks', 0);
 prev_block_count = 0;
+ball_missing_frames = 0; % NEW: Tracks consecutive frames without a ball
 
 % Flags and variables for in-memory save states
 level_saved = false; 
@@ -69,6 +70,20 @@ while true
     current_state = discretize_state(current_paddle_pos, current_ball_pos, velocity, intercept_x, config);
     reward = calculate_visual_reward(current_ball_pos, velocity, prev_velocity, prev_action_idx, prev_prev_action_idx, config);
 
+    % --- DEATH DETECTION (Multi-Ball Safe) ---
+    if level_saved
+        if isempty(current_ball_pos)
+            ball_missing_frames = ball_missing_frames + 1;
+        else
+            ball_missing_frames = 0;
+        end
+        
+        % If the screen has no ball for 15 frames, the last ball was lost
+        if ball_missing_frames >= 15
+            reward = -100;
+        end
+    end
+
     % --- METRICS UPDATE ---
     episode_stats.reward = episode_stats.reward + reward;
     episode_stats.steps = episode_stats.steps + 1;
@@ -100,13 +115,16 @@ while true
     if reward == -100
         fprintf('Agent died at frame %d. Restoring from memory...\n', frame_counter);
         
+        % CRITICAL TD(LAMBDA) MATH: Because the paddle was exploding, standard
+        % Q-updates were skipped. We forcefully punish the entire "footprint" 
+        % of previous actions that caused the ball to drop.
+        config.rl.q_table = config.rl.q_table + (config.rl.alpha * reward * config.rl.e_table);
+        
         % --- FINALIZE EPISODE TELEMETRY ---
-        % Cleanly delegate all array appends, saving, and variable resets
         [telemetry, episode_stats] = record_episode_telemetry(telemetry, episode_stats, config.rl.epsilon);
 
         % Teleport back to the exact frame the level started
         if level_saved && ~isempty(level_mem)
-            % Explicitly cast back to uint8 to satisfy the C++ backend
             arkanoid_rom.set_state(uint8(level_mem));
         else
             arkanoid_rom.reset(); % Fallback if it died before memory was saved
@@ -115,7 +133,8 @@ while true
         % CRITICAL: Wipe short-term memory to avoid corrupting the Q-Table
         prev_ball_pos = []; prev_velocity = []; prev_state = [];
         prev_action_idx = 0; prev_prev_action_idx = 0;
-        prev_block_count = 0; % Reset block tracker for new life
+        prev_block_count = 0; 
+        ball_missing_frames = 0; % Reset the absence tracker
         config.rl.e_table = zeros(size(config.rl.q_table)); % Wipe Eligibility Trace
         
         continue; % Skip the rest of this loop and pull a fresh frame
