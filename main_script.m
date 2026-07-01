@@ -142,7 +142,7 @@ while true
     end
 
     % 5. Actuate Environment
-    current_input = translate_action_to_input(action_idx, frame_counter);
+    current_input = translate_action_to_input(action_idx, frame_counter, level_saved);
 
     % 6. Telemetry & Display Update
     if mod(frame_counter, 5) == 0 || reward ~= 0

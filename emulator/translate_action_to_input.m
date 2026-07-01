@@ -1,13 +1,16 @@
-function next_input = translate_action_to_input(action_idx, frame_counter)
+function next_input = translate_action_to_input(action_idx, frame_counter, level_saved)
     % Translates the RL action index to emulator button inputs.
     % Maps agent logic (1, 2, 3) to physical emulator I/O.
-    %
-    % Usage:
-    %   input_struct = translate_action_to_input(2, 150);
+    
+    if nargin < 3
+        level_saved = false;
+    end
 
     % STREAMING_CHUNK: Handling menu sequence bypass...
     if action_idx == 0 || isempty(action_idx)
-        if mod(frame_counter, 60) < 5
+        % Only spam START if we haven't successfully loaded the level yet.
+        % If level_saved is true, a missing paddle is a vision glitch, so we IDLE.
+        if ~level_saved && mod(frame_counter, 60) < 5
             next_input = button("START");
         else
             next_input = button();
